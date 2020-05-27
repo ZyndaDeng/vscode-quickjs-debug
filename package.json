@@ -1,0 +1,237 @@
+{
+	"name": "quickjscpp-debug",
+	"displayName": "QuickJS CPP Debugger",
+	"version": "0.0.13",
+	"publisher": "koush",
+	"description": "Debug the QuickJS runtime.",
+	"author": {
+		"name": "Koushik Dutta",
+		"email": "koushd@gmail.com"
+	},
+	"license": "MIT",
+	"keywords": [
+		"multi-root ready"
+	],
+	"engines": {
+		"vscode": "^1.33.0",
+		"node": "^10.15.1"
+	},
+	"icon": "images/quickjs-debug-icon.png",
+	"categories": [
+		"Debuggers"
+	],
+	"private": true,
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/koush/vscode-quickjs-debug.git"
+	},
+	"bugs": {
+		"url": "https://github.com/koush/vscode-quickjs-debug/issues"
+	},
+	"scripts": {
+		"prepublish": "tsc -p ./src",
+		"compile": "tsc -p ./src",
+		"tslint": "tslint ./src/**/*.ts",
+		"watch": "tsc -w -p ./src",
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"package": "vsce package",
+		"publish": "vsce publish"
+	},
+	"dependencies": {
+		"await-notify": "1.0.1",
+		"source-map": "^0.7.3",
+		"stream-parser": "^0.3.1",
+		"vscode-debugadapter": "1.37.0"
+	},
+	"devDependencies": {
+		"@types/node": "10.12.12",
+		"@types/mocha": "5.2.7",
+		"typescript": "3.5.3",
+		"mocha": "6.2.0",
+		"vscode": "1.1.36",
+		"vscode-debugadapter-testsupport": "1.37.0",
+		"tslint": "5.18.0",
+		"vsce": "1.66.0"
+	},
+	"main": "./out/extension",
+	"activationEvents": [
+		"onDebug"
+	],
+	"contributes": {
+		"breakpoints": [
+			{
+				"language": "javascript"
+			}
+		],
+		"debuggers": [
+			{
+				"type": "quickjs",
+				"label": "QuickJS Debug",
+				"program": "./out/debugAdapter.js",
+				"runtime": "node",
+				"configurationAttributes": {
+					"launch": {
+						"required": [
+							"program",
+							"runtimeExecutable"
+						],
+						"properties": {
+							"program": {
+								"type": "string",
+								"description": "Absolute path to a js file.",
+								"default": "${workspaceFolder}/main.js"
+							},
+							"console": {
+								"type": "string",
+								"enum": [
+									"internalConsole",
+									"integratedTerminal",
+									"externalTerminal"
+								],
+								"default": "internalConsole"
+							},
+							"args": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"default": []
+							},
+							"cwd": {
+								"type": "string",
+								"default": "${workspaceFolder}"
+							},
+							"runtimeExecutable": {
+								"type": "string",
+								"description": "Path to qjs executable"
+							},
+							"mode": {
+								"type": "string",
+								"description": "The debugger connection mode. Use 'listen' to have VS Code wait for QuickJS to connect. Use 'connect' to have VSCode attach to a QuickJS runtime that is listening for a debugger.",
+								"enum": [
+									"connect",
+									"listen"
+								],
+								"default": "listen"
+							},
+							"address": {
+								"type": "string",
+								"description": "The address used by he debug extension for incoming/outgoing sessions (connection 'mode' dependent).",
+								"default": "localhost"
+							},
+							"port": {
+								"type": "number",
+								"description": "The port used by he debug extension for incoming/outgoing sessions. (connection 'mode' dependent)",
+								"default": 0
+							},
+							"localRoot": {
+								"type": "string",
+								"description": "The local source root use for files that do not have source maps.",
+								"default": "${workspaceFolder}/"
+							},
+							"remoteRoot": {
+								"type": "string",
+								"description": "The remote root use for files that do not have source maps.",
+								"default": ""
+							},
+							"trace": {
+								"type": "boolean",
+								"description": "Enable logging of the Debug Adapter Protocol.",
+								"default": true
+							},
+							"sourceMaps": {
+								"type": "object",
+								"description": "The sourcemaps from a transpilation tool like webpack and their corresponding remoteRoots. Specifying null will use the default remoteRoot.",
+								"default": {
+									"${workspaceFolder}/out/main.quickjs.js.map": "${workspaceFolder}/src"
+								}
+							},
+							"jsPath":{
+								"type":"string",
+								"description":"the js path",
+								"default":"${workspaceFolder}/src"
+							}
+						}
+					},
+					"attach": {
+						"properties": {
+							"mode": {
+								"type": "string",
+								"description": "The debugger connection mode. Use 'listen' to have VS Code wait for QuickJS to connect. Use 'connect' to have VSCode attach to a QuickJS runtime that is listening for a debugger.",
+								"enum": [
+									"connect",
+									"listen"
+								],
+								"default": "listen"
+							},
+							"address": {
+								"type": "string",
+								"description": "The address used by he debug extension for incoming/outgoing sessions (connection 'mode' dependent).",
+								"default": "localhost"
+							},
+							"port": {
+								"type": "number",
+								"description": "The port used by he debug extension for incoming/outgoing sessions. (connection 'mode' dependent)",
+								"default": 0
+							},
+							"localRoot": {
+								"type": "string",
+								"description": "The local source root used for unqualified files.",
+								"default": "${workspaceFolder}/"
+							},
+							"remoteRoot": {
+								"type": "string",
+								"description": "The remote root use for files that do not have source maps.",
+								"default": ""
+							},
+							"trace": {
+								"type": "boolean",
+								"description": "Enable logging of the Debug Adapter Protocol.",
+								"default": true
+							},
+							"sourceMaps": {
+								"type": "object",
+								"description": "The sourcemaps from a transpilation tool like webpack and their corresponding remoteRoots. Specifying null will use the default remoteRoot.",
+								"default": {
+									"${workspaceFolder}/out/main.quickjs.js.map": "${workspaceFolder}/src"
+								}
+							}
+						}
+					}
+				},
+				"initialConfigurations": [
+					{
+						"type": "quickjs",
+						"request": "launch",
+						"name": "Launch QuickJS",
+						"runtimeExecutable": "/path/to/qjs",
+						"program": "^\"${workspaceFolder}/main.js\""
+					}
+				],
+				"configurationSnippets": [
+					{
+						"label": "QuickJS Debug: Launch",
+						"description": "A new configuration for launching and debugging a JavaScript file in QuickJS.",
+						"body": {
+							"type": "quickjs",
+							"request": "launch",
+							"name": "Launch QuickJS",
+							"runtimeExecutable": "/path/to/qjs",
+							"program": "^\"\\${workspaceFolder}/main.js\""
+						}
+					},
+					{
+						"label": "QuickJS Debug: Attach",
+						"description": "A new configuration for launching and waiting fpr QuickJS to attach.",
+						"body": {
+							"type": "quickjs",
+							"request": "launch",
+							"name": "Attach QuickJS",
+							"localRoot": "^\"\\${workspaceFolder}/\""
+						}
+					}
+				]
+			}
+		]
+	}
+}
