@@ -19,5 +19,5 @@ export interface SourcemapArguments {
 	 *   Specify null to use the default remoteRoot: '/remote/root/webpack.main.js'
 	 *   Specify an empty string to use the relative path: 'webpack.main.js'
 	 */
-	sourceMaps?: object;
+	//sourceMaps?: object;
 }

@@ -1,59 +1,101 @@
 import { BasicSourceMapConsumer, MappedPosition, NullablePosition, SourceMapConsumer } from 'source-map';
 import { LoggingDebugSession } from 'vscode-debugadapter';
 import { SourcemapArguments } from "./sourcemapArguments";
+import { normalize } from './pathUtilities';
+
+
 const path = require('path');
 const fs = require('fs');
 
 export abstract class SourcemapSession extends LoggingDebugSession {
 	// a map of all absolute file sources found in the sourcemaps
 	private _fileToSourceMap = new Map<string, BasicSourceMapConsumer>();
-	private _sourceMapsLoading: Promise<any>|undefined;
+	//private _sourceMapsLoading: Promise<any>|undefined;
 	// keep track of the sourcemaps and the location of the file.map used to load it
 	private _sourceMaps = new Map<BasicSourceMapConsumer, string>();
 
 	abstract async logTrace(message: string);
 	abstract async getArguments(): Promise<SourcemapArguments>;
 
-	async loadSourceMaps() {
-		const commonArgs = await this.getArguments();
-		if (this._sourceMapsLoading)
-			return await this._sourceMapsLoading;
+	// async loadSourceMaps() {
+	// 	const commonArgs = await this.getArguments();
+	// 	if (this._sourceMapsLoading)
+	// 		return await this._sourceMapsLoading;
 
-		var sourceMaps = Object.keys(commonArgs.sourceMaps || {}) || [];
+	// 	var sourceMaps = Object.keys(commonArgs.sourceMaps || {}) || [];
 
-		var promises = sourceMaps.map(sourcemap => (async () => {
-			try {
-				let json = JSON.parse(fs.readFileSync(sourcemap).toString());
-				var smc = await new SourceMapConsumer(json);
-				this._sourceMaps.set(smc, sourcemap);
-				var sourceMapRoot = path.dirname(sourcemap);
-				var sources = smc.sources.map(source => path.join(sourceMapRoot, source) as string);
-				for (var source of sources) {
-					const other = this._fileToSourceMap.get(source);
-					if (other) {
-						this.logTrace(`sourcemap for ${source} found in ${other.file}.map and ${sourcemap}`);
-					}
-					else {
-						this._fileToSourceMap.set(source, smc);
-					}
-				}
-			}
-			catch (e) {
-			}
-		})());
+	// 	var promises = sourceMaps.map(sourcemap => (async () => {
+	// 		try {
+	// 			let json = JSON.parse(fs.readFileSync(sourcemap).toString());
+	// 			var smc = await new SourceMapConsumer(json);
+	// 			this._sourceMaps.set(smc, sourcemap);
+	// 			var sourceMapRoot = path.dirname(sourcemap);
+	// 			var sources = smc.sources.map(source => path.join(sourceMapRoot, source) as string);
+	// 			for (var source of sources) {
+	// 				const other = this._fileToSourceMap.get(source);
+	// 				if (other) {
+	// 					this.logTrace(`sourcemap for ${source} found in ${other.file}.map and ${sourcemap}`);
+	// 				}
+	// 				else {
+	// 					this._fileToSourceMap.set(source, smc);
+	// 				}
+	// 			}
+	// 		}
+	// 		catch (e) {
+	// 		}
+	// 	})());
 
-		this._sourceMapsLoading = Promise.all(promises);
+	// 	this._sourceMapsLoading = Promise.all(promises);
 
-		return await this._sourceMapsLoading;
+	// 	return await this._sourceMapsLoading;
+	// }
+
+	// async translateFileToRemote(file: string): Promise<string> {
+
+	// 	await this.loadSourceMaps();
+
+	// 	const sm = this._fileToSourceMap.get(file);
+	// 	if (!sm)
+	// 		return file;
+	// 	return sm.file;
+	// }
+
+	async getSourceMap(file:string):Promise<string>{
+		//const commonArgs = await this.getArguments();
+		let relative=await this.getLocalRelativePath(file);
+		let remoteFile=await this.getRemoteAbsolutePath(relative);
+		if(remoteFile.endsWith(".ts")){
+			remoteFile=remoteFile.replace(".ts",".js");
+		}
+		return remoteFile+".map";
 	}
 
-	async translateFileToRemote(file: string): Promise<string> {
-		await this.loadSourceMaps();
-
-		const sm = this._fileToSourceMap.get(file);
-		if (!sm)
-			return file;
-		return sm.file;
+	async lazyLoadSourceMap(file:string){
+		//const commonArgs = await this.getArguments();
+		const fileKey=await this.getLocalRelativePath(file);
+		const sourcemap=await this.getSourceMap(file);
+		if(this._fileToSourceMap.has(fileKey)){
+			return
+		}
+		try {
+			let json = JSON.parse(fs.readFileSync(sourcemap).toString());
+			var smc = await new SourceMapConsumer(json);
+			this._sourceMaps.set(smc, sourcemap);
+			var sourceMapRoot = path.dirname(sourcemap);
+			var sources = smc.sources.map(source => path.join(sourceMapRoot, source) as string);
+			for (var source of sources) {
+				const fileKey=await this.getLocalRelativePath(source);
+				const other = this._fileToSourceMap.get(fileKey);
+				if (other) {
+					this.logTrace(`sourcemap for ${source} found in ${other.file}.map and ${sourcemap}`);
+				}
+				else {
+					this._fileToSourceMap.set(fileKey, smc);
+				}
+			}
+		}
+		catch (e) {
+		}
 	}
 
 	private async getRemoteAbsolutePath(remoteFile: string, remoteRoot?: string): Promise<string> {
@@ -89,8 +131,9 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 
 
 	async translateFileLocationToRemote(sourceLocation: MappedPosition): Promise<MappedPosition> {
-		await this.loadSourceMaps();
-		const commonArgs = await this.getArguments();
+		//await this.loadSourceMaps();
+		await this.lazyLoadSourceMap(sourceLocation.source);
+		//const commonArgs = await this.getArguments();
 
 		// step 1: translate the absolute local source position to a relative source position.
 		// (has sourcemap) /local/path/to/test.ts:10 -> test.js:15
@@ -101,23 +144,26 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 		// (no remote root)test.js:10 -> test.js:10
 
 		try {
-			const sm = this._fileToSourceMap.get(sourceLocation.source);
+			const fileKey=await this.getLocalRelativePath(sourceLocation.source);
+			const sm = this._fileToSourceMap.get(fileKey);
 			if (!sm)
 				throw new Error('no source map');
+
 			const sourcemap = this._sourceMaps.get(sm);
 			if (!sourcemap)
 				throw new Error();
 			const actualSourceLocation = Object.assign({}, sourceLocation);
 			this.logTrace(`translateFileLocationToRemote: ${JSON.stringify(sourceLocation)} to: ${JSON.stringify(actualSourceLocation)}`);
 			// convert the local absolute path into a sourcemap relative path.
-			actualSourceLocation.source = path.relative(path.dirname(sourcemap), sourceLocation.source);
+			actualSourceLocation.source =normalize( path.relative(path.dirname(sourcemap), sourceLocation.source));
 			var unmappedPosition: NullablePosition = sm.generatedPositionFor(actualSourceLocation);
 			if (!unmappedPosition.line == null)
 				throw new Error('map failed');
 			// now given a source mapped relative path, translate that into a remote path.
 			const smp = this._sourceMaps.get(sm);
-			let remoteRoot = commonArgs.sourceMaps && commonArgs.sourceMaps[smp!]
-			let remoteFile = await this.getRemoteAbsolutePath(sm.file, remoteRoot);
+			if(!smp)throw new Error('map failed');
+			//let remoteRoot = commonArgs.sourceMaps && commonArgs.sourceMaps[smp!]
+			let remoteFile = smp.replace(".map","");
 			return {
 				source: remoteFile,
 				// the source-map docs indicate that line is 1 based, but that seems to be wrong.
@@ -134,23 +180,26 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 	}
 
 	async translateRemoteLocationToLocal(sourceLocation: MappedPosition): Promise<MappedPosition> {
-		await this.loadSourceMaps();
-		const commonArgs = await this.getArguments();
+		//await this.loadSourceMaps();
+		//const commonArgs = await this.getArguments();
 
 		try {
 			for (var sm of this._sourceMaps.keys()) {
 				const smp = this._sourceMaps.get(sm);
 
 				// given a remote path, translate that into a source map relative path for lookup
-				let remoteRoot = commonArgs.sourceMaps && commonArgs.sourceMaps[smp!]
-				let relativeFile = await this.getRemoteRelativePath(sourceLocation.source, remoteRoot);
+				//let remoteRoot =undefined;// commonArgs.sourceMaps && commonArgs.sourceMaps[smp!]
+				if(!smp)continue;
+				let relativeFile = smp.replace(".map","");
 
-				if (relativeFile !== sm.file)
+
+				if (normalize( relativeFile) !== normalize(sourceLocation.source))
 					continue;
 
 				const original = sm.originalPositionFor({
 					column: sourceLocation.column,
 					line: sourceLocation.line,
+					bias:SourceMapConsumer.LEAST_UPPER_BOUND,
 				});
 				this.logTrace(`translateRemoteLocationToLocal: ${JSON.stringify(sourceLocation)} to: ${JSON.stringify(original)}`);
 				if (original.line === null || original.column === null || original.source === null)
