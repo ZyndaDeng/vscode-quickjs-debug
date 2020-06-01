@@ -71,7 +71,8 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 	}
 
 	async lazyLoadSourceMap(file:string){
-		//const commonArgs = await this.getArguments();
+		const commonArgs = await this.getArguments();
+		if(!commonArgs.sourceMaps)return;
 		const fileKey=await this.getLocalRelativePath(file);
 		const sourcemap=await this.getSourceMap(file);
 		if(this._fileToSourceMap.has(fileKey)){

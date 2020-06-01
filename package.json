@@ -1,7 +1,7 @@
 {
 	"name": "quickjscpp-debug",
 	"displayName": "QuickJS CPP Debugger",
-	"version": "0.0.13",
+	"version": "0.35.0",
 	"publisher": "zynda",
 	"description": "Debug the QuickJS runtime.",
 	"author": {
@@ -61,6 +61,9 @@
 		"breakpoints": [
 			{
 				"language": "javascript"
+			},
+			{
+				"language": "typescript"
 			}
 		],
 		"debuggers": [
@@ -143,6 +146,11 @@
 								"type":"string",
 								"description":"the js path",
 								"default":"${workspaceFolder}/src"
+							},
+							"sourceMaps":{
+								"type":"boolean",
+								"description": "Enable sourceMaps.",
+								"default": false
 							}
 						}
 					},
@@ -181,13 +189,6 @@
 								"type": "boolean",
 								"description": "Enable logging of the Debug Adapter Protocol.",
 								"default": true
-							},
-							"sourceMaps": {
-								"type": "object",
-								"description": "The sourcemaps from a transpilation tool like webpack and their corresponding remoteRoots. Specifying null will use the default remoteRoot.",
-								"default": {
-									"${workspaceFolder}/out/main.quickjs.js.map": "${workspaceFolder}/src"
-								}
 							}
 						}
 					}
