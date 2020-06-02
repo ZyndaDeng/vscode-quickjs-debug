@@ -6,8 +6,8 @@
 import * as Path from 'path';
 import * as FS from 'fs';
 import * as CP from 'child_process';
-const glob = require('glob');
-const minimatch = require('minimatch');
+//const glob = require('glob');
+//const minimatch = require('minimatch');
 
 /**
   * The input paths must use the path syntax of the underlying operating system.
@@ -290,85 +290,85 @@ export function makeRelative2(from: string, to: string): string {
 
 //---- globbing support -------------------------------------------------
 
-interface IGlobTask {
-	pattern: string;
-	opts: any;
-}
+// interface IGlobTask {
+// 	pattern: string;
+// 	opts: any;
+// }
 
-export function multiGlob(patterns: string[], opts?): Promise<string[]> {
+// export function multiGlob(patterns: string[], opts?): Promise<string[]> {
 
-	const globTasks = new Array<IGlobTask>();
+// 	const globTasks = new Array<IGlobTask>();
 
-	opts = extendObject({
-		cache: Object.create(null),
-		statCache: Object.create(null),
-		realpathCache: Object.create(null),
-		symlinks: Object.create(null),
-		ignore: []
-	}, opts);
+// 	opts = extendObject({
+// 		cache: Object.create(null),
+// 		statCache: Object.create(null),
+// 		realpathCache: Object.create(null),
+// 		symlinks: Object.create(null),
+// 		ignore: []
+// 	}, opts);
 
-	const isExclude = pattern => pattern[0] === '!';
+// 	const isExclude = pattern => pattern[0] === '!';
 
-	try {
+// 	try {
 
-		patterns.forEach( (pattern, i) => {
+// 		patterns.forEach( (pattern, i) => {
 
-			if (isExclude(pattern)) {
-				return;
-			}
+// 			if (isExclude(pattern)) {
+// 				return;
+// 			}
 
-			const ignore = patterns.slice(i).filter(isExclude).map(pattern => pattern.slice(1));
+// 			const ignore = patterns.slice(i).filter(isExclude).map(pattern => pattern.slice(1));
 
-			globTasks.push({
-				pattern: pattern,
-				opts: extendObject(extendObject({}, opts), {
-					ignore: opts.ignore.concat(ignore)
-				})
-			});
-		});
+// 			globTasks.push({
+// 				pattern: pattern,
+// 				opts: extendObject(extendObject({}, opts), {
+// 					ignore: opts.ignore.concat(ignore)
+// 				})
+// 			});
+// 		});
 
-	} catch (err) {
-		return Promise.reject(err);
-	}
+// 	} catch (err) {
+// 		return Promise.reject(err);
+// 	}
 
-	return Promise.all(globTasks.map(task => {
+// 	return Promise.all(globTasks.map(task => {
 
-		return new Promise<string[]>((c, e) => {
-			glob(task.pattern, task.opts, (err, files: string[]) => {
-				if (err) {
-					e(err);
-				} else {
-					c(files);
-				}
-			});
-		});
+// 		return new Promise<string[]>((c, e) => {
+// 			glob(task.pattern, task.opts, (err, files: string[]) => {
+// 				if (err) {
+// 					e(err);
+// 				} else {
+// 					c(files);
+// 				}
+// 			});
+// 		});
 
-	})).then(results =>  {
+// 	})).then(results =>  {
 
-		const set = new Set<string>();
-		for (let paths of results) {
-			for (let p of paths) {
-				set.add(p);
-			}
-		}
-		let array = new Array<string>();
-		set.forEach(v => array.push(Path.posix.normalize(v)));
-		return array;
-	});
-}
+// 		const set = new Set<string>();
+// 		for (let paths of results) {
+// 			for (let p of paths) {
+// 				set.add(p);
+// 			}
+// 		}
+// 		let array = new Array<string>();
+// 		set.forEach(v => array.push(Path.posix.normalize(v)));
+// 		return array;
+// 	});
+// }
 
-export function multiGlobMatches(patterns: string[], path: string): boolean {
+// export function multiGlobMatches(patterns: string[], path: string): boolean {
 
-	let matched = false;
-	for (const p of patterns) {
-		const isExclude = p[0] === '!';
-		if (matched !== isExclude) {
-			break;
-		}
-		matched = minimatch(path, p);
-	}
-	return matched;
-}
+// 	let matched = false;
+// 	for (const p of patterns) {
+// 		const isExclude = p[0] === '!';
+// 		if (matched !== isExclude) {
+// 			break;
+// 		}
+// 		matched = minimatch(path, p);
+// 	}
+// 	return matched;
+// }
 
 //---- misc
 
