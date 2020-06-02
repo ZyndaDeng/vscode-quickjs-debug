@@ -72,7 +72,7 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 
 	async lazyLoadSourceMap(file:string){
 		const commonArgs = await this.getArguments();
-		if(!commonArgs.sourceMaps)return;
+		if(!commonArgs.sourceMaps){return;}
 		const fileKey=await this.getLocalRelativePath(file);
 		const sourcemap=await this.getSourceMap(file);
 		if(this._fileToSourceMap.has(fileKey)){
@@ -80,11 +80,11 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 		}
 		try {
 			let json = JSON.parse(fs.readFileSync(sourcemap).toString());
-			var smc = await new SourceMapConsumer(json);
+			let smc = await new SourceMapConsumer(json);
 			this._sourceMaps.set(smc, sourcemap);
-			var sourceMapRoot = path.dirname(sourcemap);
-			var sources = smc.sources.map(source => path.join(sourceMapRoot, source) as string);
-			for (var source of sources) {
+			let sourceMapRoot = path.dirname(sourcemap);
+			let sources = smc.sources.map(source => path.join(sourceMapRoot, source) as string);
+			for (let source of sources) {
 				const fileKey=await this.getLocalRelativePath(source);
 				const other = this._fileToSourceMap.get(fileKey);
 				if (other) {
@@ -101,32 +101,38 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 
 	private async getRemoteAbsolutePath(remoteFile: string, remoteRoot?: string): Promise<string> {
 		const commonArgs = await this.getArguments();
-		if (remoteRoot == null)
+		if (remoteRoot === undefined){
 			remoteRoot = commonArgs.remoteRoot;
-		if (remoteRoot)
+		}
+		if (remoteRoot){
 			remoteFile = path.join(remoteRoot, remoteFile);
+		}
 		return remoteFile;
 	}
 
 	private async getRemoteRelativePath(remoteFile: string, remoteRoot?: string): Promise<string> {
 		const commonArgs = await this.getArguments();
-		if (remoteRoot == null)
+		if (remoteRoot === undefined){
 			remoteRoot = commonArgs.remoteRoot;
-		if (remoteRoot)
+		}
+		if (remoteRoot){
 			return path.relative(remoteRoot, remoteFile);
+		}
 		return remoteFile;
 	}
 
 	private async getLocalAbsolutePath(localFile: string): Promise<string> {
 		const commonArgs = await this.getArguments();
-		if (commonArgs.localRoot)
+		if (commonArgs.localRoot){
 			return path.join(commonArgs.localRoot, localFile);
+		}
 		return localFile;
 	}
 	private async getLocalRelativePath(localFile: string): Promise<string> {
 		const commonArgs = await this.getArguments();
-		if (commonArgs.localRoot)
+		if (commonArgs.localRoot){
 			return path.relative(commonArgs.localRoot, localFile);
+		}
 		return localFile;
 	}
 
@@ -147,22 +153,25 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 		try {
 			const fileKey=await this.getLocalRelativePath(sourceLocation.source);
 			const sm = this._fileToSourceMap.get(fileKey);
-			if (!sm)
+			if (!sm){
 				throw new Error('no source map');
+			}
 
 			const sourcemap = this._sourceMaps.get(sm);
-			if (!sourcemap)
+			if (!sourcemap){
 				throw new Error();
+			}
 			const actualSourceLocation = Object.assign({}, sourceLocation);
 			this.logTrace(`translateFileLocationToRemote: ${JSON.stringify(sourceLocation)} to: ${JSON.stringify(actualSourceLocation)}`);
 			// convert the local absolute path into a sourcemap relative path.
 			actualSourceLocation.source =normalize( path.relative(path.dirname(sourcemap), sourceLocation.source));
-			var unmappedPosition: NullablePosition = sm.generatedPositionFor(actualSourceLocation);
-			if (!unmappedPosition.line == null)
+			let unmappedPosition: NullablePosition = sm.generatedPositionFor(actualSourceLocation);
+			if (!unmappedPosition.line === null){
 				throw new Error('map failed');
+			}
 			// now given a source mapped relative path, translate that into a remote path.
 			const smp = this._sourceMaps.get(sm);
-			if(!smp)throw new Error('map failed');
+			if(!smp){throw new Error('map failed');}
 			//let remoteRoot = commonArgs.sourceMaps && commonArgs.sourceMaps[smp!]
 			let remoteFile = smp.replace(".map","");
 			return {
@@ -174,7 +183,7 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 		}
 		catch (e) {
 			// local files need to be resolved to remote files.
-			var ret = Object.assign({}, sourceLocation);
+			let ret = Object.assign({}, sourceLocation);
 			ret.source = await this.getRemoteAbsolutePath(await this.getLocalRelativePath(sourceLocation.source));
 			return ret;
 		}
@@ -185,17 +194,18 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 		//const commonArgs = await this.getArguments();
 
 		try {
-			for (var sm of this._sourceMaps.keys()) {
+			for (let sm of this._sourceMaps.keys()) {
 				const smp = this._sourceMaps.get(sm);
 
 				// given a remote path, translate that into a source map relative path for lookup
 				//let remoteRoot =undefined;// commonArgs.sourceMaps && commonArgs.sourceMaps[smp!]
-				if(!smp)continue;
+				if(!smp){continue;}
 				let relativeFile = smp.replace(".map","");
 
 
-				if (normalize( relativeFile) !== normalize(sourceLocation.source))
+				if (normalize( relativeFile) !== normalize(sourceLocation.source)){
 					continue;
+				}
 
 				const original = sm.originalPositionFor({
 					column: sourceLocation.column,
@@ -203,8 +213,9 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 					bias:SourceMapConsumer.LEAST_UPPER_BOUND,
 				});
 				this.logTrace(`translateRemoteLocationToLocal: ${JSON.stringify(sourceLocation)} to: ${JSON.stringify(original)}`);
-				if (original.line === null || original.column === null || original.source === null)
+				if (original.line === null || original.column === null || original.source === null){
 					throw new Error("unable to map");
+				}
 
 				// now given a source mapped relative path, translate that into a local path.
 				return {
@@ -217,7 +228,7 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 		}
 		catch (e) {
 			// remote files need to be resolved to local files.
-			var ret = Object.assign({}, sourceLocation);
+			let ret = Object.assign({}, sourceLocation);
 			ret.source = await this.getLocalAbsolutePath(await this.getRemoteRelativePath(sourceLocation.source));
 			return ret;
 		}
