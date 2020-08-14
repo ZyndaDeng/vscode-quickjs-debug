@@ -2,6 +2,8 @@ import { BasicSourceMapConsumer, MappedPosition, NullablePosition, SourceMapCons
 import { LoggingDebugSession } from 'vscode-debugadapter';
 import { SourcemapArguments } from "./sourcemapArguments";
 import { normalize } from './pathUtilities';
+import { glob } from 'glob';
+
 
 
 const path = require('path');
@@ -59,6 +61,34 @@ export abstract class SourcemapSession extends LoggingDebugSession {
 	// 		return file;
 	// 	return sm.file;
 	// }
+
+	protected async loadSourceMaps() {
+		const commonArgs = await this.getArguments();
+		if(!commonArgs.sourceMaps){return;}
+		let smPath=commonArgs.remoteRoot+"**/*.map"
+		const files = glob.sync(smPath );
+		for (const sourcemap of files) {
+			try {
+				let json = JSON.parse(fs.readFileSync(sourcemap).toString());
+				let smc = await new SourceMapConsumer(json);
+				this._sourceMaps.set(smc, sourcemap);
+				let sourceMapRoot = path.dirname(sourcemap);
+				let sources = smc.sources.map(source => path.join(sourceMapRoot, source) as string);
+				for (let source of sources) {
+					const fileKey=await this.getLocalRelativePath(source);
+					const other = this._fileToSourceMap.get(fileKey);
+					if (other) {
+						this.logTrace(`sourcemap for ${source} found in ${other.file}.map and ${sourcemap}`);
+					}
+					else {
+						this._fileToSourceMap.set(fileKey, smc);
+					}
+				}
+			}
+			catch (e) {
+			}
+		}
+	}
 
 	async getSourceMap(file:string):Promise<string>{
 		//const commonArgs = await this.getArguments();
